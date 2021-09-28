@@ -1,0 +1,64 @@
+---
+title: "GFR vs Solute Clearance Association - Color Graded by Clearance Ratio"
+author: "Michael Granda"
+date: "9/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(plotly)
+library(knitr)
+library(dplyr)
+library(kableExtra)
+
+load("assoc_dat.Rda")
+
+assoc_dat <- assoc_dat %>%
+  mutate(clearance_cat=case_when(
+    clearance_ratio<0.05 ~ 1,
+    clearance_ratio >=0.05 & clearance_ratio < 1 ~ 2,
+    clearance_ratio >=1 & clearance_ratio < 5 ~ 3,
+    clearance_ratio >= 5 & clearance_ratio < 15 ~ 4,
+    clearance_ratio >= 15 ~ 5
+  ))
+
+p <- ggplot(assoc_dat, aes(x=binding_mean*100, y=-log10(P_iGFR), text=text)) +
+  # show all points
+  geom_point(aes(color=as.factor(clearance_cat)), alpha=0.8, size=0.4) +
+  scale_color_manual(values = rep(c("#440154FF", "#404788FF", "#3CBB75FF", "#B8DE29FF", "#FDE725FF"))) +
+  scale_y_continuous(expand = c(0,0)) +
+  ylim(0,14) +
+  
+  labs(x="Protein Binding (%)", y="-Log10(Sol ~ iGFR)") +
+  guides(color=guide_legend(title="Clr Cat")) +
+  
+  theme_dark() +
+  theme(
+    panel.background = element_rect(fill = "black"),
+    legend.background = element_rect(fill="grey90"),
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+```
+
+```{r plot, echo=FALSE}
+ggplotly(p, tooltip="text")
+
+```
+
+```{r cov_tab, echo=FALSE, results='asis'}
+cov_range <- matrix(nrow=5, ncol=3)
+cov_range[ , 1] <- 1:5
+for(i in 1:5) {
+  cov_range[i,2] <- min(assoc_dat$clearance_ratio[assoc_dat$clearance_cat==i])
+  cov_range[i,3] <- max(assoc_dat$clearance_ratio[assoc_dat$clearance_cat==i])
+}
+colnames(cov_range) <- c("Clearance ratio category #", "Minimum", "Maximum")
+kable(cov_range, caption="Description of Clearance ratio (Solute Clr/CrCl) categories", digits=2) %>%
+    kable_styling(bootstrap_options="striped")
+  
+```
